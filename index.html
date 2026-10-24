@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏢 公司经营模拟</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    margin:0; min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 0%, #1a2430 0%, #0d141c 55%, #05080c 100%);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#c8d8e8; padding:16px 12px 60px; user-select:none;
+  }
+  .back { display:inline-block; text-decoration:none; color:#6a8aaa; font-size:10px; margin-bottom:8px;
+    padding:6px 12px; border:1px solid #2a4055; border-radius:20px; }
+  h1 { font-size:13px; text-align:center; color:#60a0e0; font-weight:700; letter-spacing:2px; margin:4px 0 4px; }
+  .sub { text-align:center; color:#7a94ac; font-size:10px; margin-bottom:12px; line-height:1.7; }
+  .wrap { max-width:760px; margin:0 auto; }
+
+  /* 开局选择 */
+  .warnBox { background:#1a1410; border:1px solid #6a4a20; border-radius:9px; padding:10px 12px;
+    font-size:9px; color:#c0a070; line-height:1.9; margin-bottom:14px; }
+  .warnBox b { color:#e0b060; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+  .sel { width:100%; padding:9px 8px; background:#0e1620; border:1px solid #2a4055; border-radius:8px;
+    color:#a0c0d8; font-size:11px; font-family:inherit; }
+  .cityinfo { background:#0c151c; border:1px solid #1e3448; border-radius:8px; padding:9px 11px;
+    font-size:9px; color:#7a94ac; line-height:1.9; }
+  .cityinfo b { color:#90c0e0; }
+  .yeargrid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .ybtn { padding:9px 6px; background:#0e1620; border:1px solid #2a4055; border-radius:8px;
+    color:#8aa8c0; font-size:10px; cursor:pointer; text-align:left; }
+  .ybtn.active { border-color:#3a7aaa; background:#14283a; color:#a0d8ff; }
+  .ybtn .yd { font-size:8px; color:#6a8aa0; margin-top:3px; display:block; }
+  .modebtn { padding:10px; background:#0e1620; border:1px solid #2a4055; border-radius:9px;
+    color:#8aa8c0; cursor:pointer; text-align:left; font-family:inherit; }
+  .modebtn.active { border-color:#3a7a5a; background:#10281a; }
+  .mname { font-size:11px; font-weight:700; margin-bottom:4px; }
+  .mdesc { font-size:9px; color:#6a8aa0; line-height:1.7; }
+  .brandcard { border:1px solid #24404a; border-radius:9px; padding:9px 11px; margin-bottom:6px; cursor:pointer; }
+  .brandcard.active { border-color:#3a7aaa; background:#14283a; }
+  .bname { font-size:11px; font-weight:700; color:#90c0d8; }
+  .bdesc { font-size:9px; color:#6a8aa0; margin:3px 0 5px; line-height:1.6; }
+  .bsign { font-size:9px; color:#7a94ac; line-height:1.8; }
+  .bsign .no { color:#c06060; }
+
+  /* 开局选择 */
+  #setup { background:linear-gradient(160deg,#16202c,#0a1018); border:1px solid #24405a; border-radius:14px; padding:16px; }
+  .setup-title { font-size:11px; color:#80b8e8; margin-bottom:12px; font-weight:700; }
+  .segopt { display:block; margin-bottom:8px; padding:10px 12px; border:1px solid #24405a; border-radius:10px;
+    cursor:pointer; transition:.15s; }
+  .segopt:active { background:#162430; }
+  .segopt input { display:none; }
+  .segopt input:checked + .segbox { color:#80d0ff; }
+  .segopt input:checked ~ * { }
+  .segbox { display:flex; align-items:center; gap:10px; }
+  .segname { font-size:12px; font-weight:700; }
+  .segdesc { font-size:10px; color:#7a94ac; }
+  .segdata { font-size:9px; color:#6a8aa8; margin-top:4px; line-height:1.6; }
+  .segdiff { margin-left:auto; font-size:10px; color:#c0a050; }
+  .startbtn { width:100%; margin-top:12px; padding:12px; background:linear-gradient(160deg,#1e4a6a,#0e2a40);
+    border:1px solid #3060a0; border-radius:10px; color:#a0d8ff; font-size:12px; font-weight:700; cursor:pointer; }
+  .startbtn:active { transform:scale(.98); }
+
+  /* 状态栏 */
+  #game { display:none; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+  .stat { background:linear-gradient(160deg,#14202c,#0a1018); border:1px solid #1e3448; border-radius:9px;
+    padding:8px 6px; text-align:center; }
+  .stat .k { font-size:9px; color:#7a94ac; margin-bottom:3px; }
+  .stat .v { font-size:12px; font-weight:700; color:#a0c8e8; }
+  .v.bad { color:#e05050; }
+  .v.warn { color:#d0a040; }
+  .good { color:#50c080; }
+  .bad { color:#e05050; }
+
+  .actions { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+  .tbtn { padding:9px 4px; background:linear-gradient(160deg,#1a2c3c,#0c1620); border:1px solid #28485f;
+    border-radius:8px; color:#80b0d0; font-size:10px; cursor:pointer; font-weight:600; }
+  .tbtn:active { transform:scale(.96); background:#203848; }
+  .tbtn:disabled { opacity:.35; cursor:not-allowed; }
+  .tbtn.primary { background:linear-gradient(160deg,#1e5a3a,#0e3020); border-color:#30a060; color:#80e0a0; }
+
+  /* 日志 */
+  #log { background:linear-gradient(160deg,#141e28,#080e14); border:1px solid #1e3448; border-radius:12px;
+    padding:12px; min-height:100px; margin-bottom:10px; font-size:10px; line-height:1.8; }
+  .logtitle { font-size:11px; color:#80b8e8; font-weight:700; margin-bottom:8px; }
+  table.detail { width:100%; border-collapse:collapse; font-size:10px; }
+  table.detail td { padding:3px 4px; }
+  table.detail td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  table.detail tr.total { border-top:1px solid #2a4055; font-weight:700; }
+  .bigEvent { background:#1a0e1e; border:1px solid #5a2a6a; border-radius:9px; padding:9px 11px; margin-top:10px; }
+  .betitle { color:#c080e0; font-size:11px; font-weight:700; margin-bottom:4px; }
+  .betext { color:#a080b0; font-size:10px; line-height:1.7; }
+  .bereal { color:#6a5070; font-size:9px; margin-top:4px; font-style:italic; }
+  .event { background:#1c1a10; border:1px solid #4a3a18; border-radius:9px; padding:9px 11px; margin-top:10px; }
+  .evtitle { color:#e0b050; font-size:10px; font-weight:700; margin-bottom:4px; }
+  .evtext { color:#a09070; font-size:10px; line-height:1.7; }
+  .evresult { margin-top:8px; padding:7px 10px; background:#0e1a12; border-left:2px solid #30a060;
+    border-radius:4px; font-size:10px; color:#80c8a0; line-height:1.7; }
+  .evresult.bad { background:#1a0e0e; border-color:#c04040; color:#e08080; }
+  .evresult.warn { background:#1a1608; border-color:#c0a040; color:#e0c080; }
+  .choices { display:grid; gap:6px; margin-top:9px; }
+  .choice { padding:9px 11px; background:#16283a; border:1px solid #2a4a68; border-radius:8px;
+    color:#90c0e0; font-size:10px; cursor:pointer; text-align:left; }
+  .choice:active { background:#1e3850; }
+
+  /* 贷款面板 */
+  #loanPanel, #mortgagePanel, #termsPanel, #ipoPanel, #reportPanel, #orgPanel, #illegalPanel { display:none; background:#101820; border:1px solid #2a4a3a; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .loanhead { font-size:10px; color:#7a94ac; margin-bottom:10px; line-height:1.9; }
+  .loanhead b { color:#80c8a0; }
+  .loanhead b.warn2 { color:#d0a040; }
+  .loanhead b.bad { color:#e05050; }
+  .loansub { font-size:9px; color:#4a6a7a; margin:10px 0 6px; letter-spacing:1px; }
+  .loanrow { display:flex; align-items:center; gap:8px; font-size:9px; color:#8aa8c0;
+    background:#0c151c; border:1px solid #1e3448; border-radius:7px; padding:7px 9px; margin-bottom:5px; }
+  .loanrow .pay { margin-left:auto; color:#d0a040; }
+  .loanprod { border:1px solid #24404a; border-radius:9px; padding:9px 11px; margin-bottom:7px; }
+  .loanprod.disabled { opacity:.45; }
+  .lpname { font-size:11px; font-weight:700; color:#90c0d8; }
+  .lpterm { font-size:9px; color:#5a7a90; font-weight:400; }
+  .lpdesc { font-size:9px; color:#6a8aa0; margin:3px 0 5px; line-height:1.6; }
+  .lprate { font-size:10px; color:#d0a040; margin-bottom:5px; }
+  .lpno { font-size:9px; color:#a05a5a; }
+  .lpbtns { display:flex; gap:6px; }
+  .tiny { padding:5px 10px; background:#16283a; border:1px solid #2a4a68; border-radius:6px;
+    color:#90c0e0; font-size:9px; cursor:pointer; }
+  .tiny:active { background:#1e3850; }
+  .loanprod.activeIllegal { border-color:#7a3a3a; background:#1a1010; }
+  .tiny.danger { border-color:#7a3a3a; color:#e09090; }
+  .loanwarn { font-size:9px; color:#8a7040; margin-top:10px; line-height:1.7;
+    background:#181408; border:1px solid #3a3018; border-radius:7px; padding:7px 9px; }
+
+  /* 换赛道面板 */
+  #switchPanel { display:none; background:#101820; border:1px solid #3a2a4a; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .switem { padding:10px; border:1px solid #2a3a4a; border-radius:9px; margin-bottom:8px; }
+  .switem.disabled { opacity:.5; }
+  .swname { font-size:11px; font-weight:700; color:#a0b8d0; }
+  .swdesc { font-size:9px; color:#5a7090; margin:3px 0; }
+  .swcost { font-size:10px; color:#c0a050; margin:5px 0; }
+  .swcost.bad { color:#c06060; }
+
+  /* 历史 */
+  .hist-wrap { background:linear-gradient(160deg,#141e28,#080e14); border:1px solid #1e3448;
+    border-radius:12px; padding:10px; }
+  .hist-title { font-size:10px; color:#7a94ac; margin-bottom:6px; }
+  table.hist { width:100%; border-collapse:collapse; font-size:9px; }
+  table.hist th { color:#40607a; font-weight:400; padding:3px; text-align:right; }
+  table.hist th:first-child { text-align:left; }
+  table.hist td { padding:3px; text-align:right; font-variant-numeric:tabular-nums; }
+  table.hist td:first-child { text-align:left; color:#5a7090; }
+
+  .over { text-align:center; font-size:16px; color:#e05050; padding:20px; font-weight:700; }
+  .ver { text-align:center; color:#4a6070; font-size:9px; margin-top:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../finance-sim/">← 回模拟金融</a>
+  <h1>🏢 公司经营模拟</h1>
+  <div class="sub">规则与成本结构全部来自真实上市公司财报<br>随机只决定"什么时候来"，不决定"合不合理"</div>
+
+  <!-- 开局 -->
+  <div id="setup">
+    <div class="warnBox">
+      ⚠️ <b>这不是一个让你觉得创业容易的游戏。</b><br>
+      参数取自 A 股/港股 15 家餐饮上市公司年报 + 真实行业数据。<br>
+      餐饮业门店年倒闭率超 60%，平均寿命 508 天。<b>默认结果是失败。</b><br>
+      请勿以此作为创业决策依据。
+    </div>
+
+    <div class="setup-title">① 选择品类</div>
+    <label class="segopt">
+      <input type="radio" name="seg" value="zhengcan" checked>
+      <div class="segbox"><div>
+        <div class="segname">🍽️ 正餐</div>
+        <div class="segdesc">家常菜 / 地方菜 / 老字号</div>
+        <div class="segdata">数据来源：3 家 A 股餐饮上市公司年报</div>
+      </div><div class="segdiff">难度 ★★★☆☆</div></div>
+    </label>
+    <label class="segopt">
+      <input type="radio" name="seg" value="huoguo">
+      <div class="segbox"><div>
+        <div class="segname">🍲 火锅</div>
+        <div class="segdesc">火锅 / 川渝 / 潮汕</div>
+        <div class="segdata">数据来源：3 家港股火锅上市公司年报</div>
+      </div><div class="segdiff">难度 ★★☆☆☆</div></div>
+    </label>
+    <label class="segopt">
+      <input type="radio" name="seg" value="kuaican">
+      <div class="segbox"><div>
+        <div class="segname">🍔 快餐</div>
+        <div class="segdesc">中式快餐 / 西式连锁</div>
+        <div class="segdata">数据来源：1 家港股快餐上市公司年报</div>
+      </div><div class="segdiff">难度 ★★☆☆☆</div></div>
+    </label>
+    <label class="segopt">
+      <input type="radio" name="seg" value="chayin">
+      <div class="segbox"><div>
+        <div class="segname">🧋 茶饮</div>
+        <div class="segdesc">奶茶 / 果茶 / 加盟模式</div>
+        <div class="segdata">数据来源：3 家港股茶饮上市公司年报</div>
+      </div><div class="segdiff">难度 ★☆☆☆☆</div></div>
+    </label>
+    <div class="setup-title" style="margin-top:16px">② 选择城市与商圈</div>
+    <div class="row2">
+      <select id="selCity" class="sel" onchange="onCityChange()"></select>
+      <select id="selDist" class="sel">
+        <option value="core">核心商圈</option>
+        <option value="comm">社区</option>
+        <option value="suburb">郊区/新城</option>
+      </select>
+    </div>
+    <div id="cityInfo" class="cityinfo"></div>
+
+    <div class="setup-title" style="margin-top:16px">③ 选择开局年份</div>
+    <div id="yearBox" class="yeargrid"></div>
+
+    <div class="setup-title" style="margin-top:16px">④ 自己创业 还是 加盟</div>
+    <div class="row2">
+      <button class="modebtn active" id="modeStart" onclick="setMode('start')">
+        <div class="mname">🔨 自己创业</div>
+        <div class="mdesc">自建品牌，投入大、什么都自己摸索，但赚的全是自己的</div>
+      </button>
+      <button class="modebtn" id="modeJoin" onclick="setMode('join')">
+        <div class="mname">🤝 加盟</div>
+        <div class="mdesc">借别人的牌子，开店快有总部支持，但要交加盟费、被抽成</div>
+      </button>
+    </div>
+    <div id="brandBox" style="display:none"></div>
+
+    <button class="startbtn" onclick="startGame()">开始经营</button>
+  </div>
+
+  <!-- 游戏主体 -->
+  <div id="game">
+    <div class="stats">
+      <div class="stat"><div class="k">现金</div><div class="v" id="cash">-</div></div>
+      <div class="stat"><div class="k">负债</div><div class="v" id="debt">-</div></div>
+      <div class="stat"><div class="k">月份</div><div class="v" id="month">0</div></div>
+      <div class="stat"><div class="k">门店</div><div class="v" id="stores">1</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">品类</div><div class="v" id="seg">-</div></div>
+      <div class="stat"><div class="k">阶段</div><div class="v" id="stage">-</div></div>
+      <div class="stat"><div class="k">口碑</div><div class="v" id="rep">50</div></div>
+      <div class="stat"><div class="k">士气</div><div class="v" id="morale">70</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">信用评分</div><div class="v" id="credit">100</div></div>
+      <div class="stat"><div class="k">可贷余额</div><div class="v" id="avail">-</div></div>
+      <div class="stat"><div class="k">月供合计</div><div class="v" id="monthlyPay">-</div></div>
+      <div class="stat"><div class="k">员工</div><div class="v" id="staff2">-</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">城市·商圈</div><div class="v" id="cityLabel">-</div></div>
+      <div class="stat"><div class="k">同行</div><div class="v" id="rivalVal">-</div></div>
+      <div class="stat"><div class="k">风险累积</div><div class="v" id="riskVal">0</div></div>
+      <div class="stat"><div class="k">组织</div><div class="v" id="orgVal">无</div></div>
+    </div>
+
+    <div class="actions">
+      <button class="tbtn primary" id="btnNext" onclick="doSettle()">▶ 下一个月</button>
+      <button class="tbtn" id="btnOpen" onclick="doOpen()">开新店</button>
+      <button class="tbtn" onclick="showLoan()">💰 贷款</button>
+      <button class="tbtn" onclick="showSwitch()">换赛道</button>
+    </div>
+    <div class="actions">
+      <button class="tbtn" onclick="showMortgage()">🏠 抵押</button>
+      <button class="tbtn" onclick="showTerms()">📦 账期</button>
+      <button class="tbtn" onclick="showOrg()">🏢 组织</button>
+      <button class="tbtn" style="border-color:#5a2a2a;color:#c08080" onclick="showIllegal()">⚠️ 违法</button>
+      <button class="tbtn" onclick="showIPO()">📈 上市</button>
+      <button class="tbtn" onclick="showReport()">📊 报表</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="loanPanel"></div>
+    <div id="mortgagePanel"></div>
+    <div id="termsPanel"></div>
+    <div id="ipoPanel"></div>
+    <div id="reportPanel"></div>
+    <div id="orgPanel"></div>
+    <div id="illegalPanel"></div>
+    <div id="switchPanel"></div>
+    <div id="log"></div>
+
+    <div class="hist-wrap">
+      <div class="hist-title">最近 12 个月</div>
+      <table class="hist">
+        <thead><tr><th>月</th><th>营收</th><th>净利</th><th>月末现金</th></tr></thead>
+        <tbody id="history"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ver">v2.2.0-事后官员开源 20261025</div>
+</div>
+
+<script src="params.js"></script>
+<script src="city.js"></script>
+<script src="franchise.js"></script>
+<script src="rivals.js"></script>
+<script src="timeline.js"></script>
+<script src="engine.js"></script>
+<script src="finance.js"></script>
+<script src="org.js"></script>
+<script src="illegal.js"></script>
+<script src="events.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
