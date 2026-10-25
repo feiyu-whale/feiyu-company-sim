@@ -31,6 +31,99 @@ const ORG_LEVELS = [
   }
 ];
 
+/* ═══════════════════════════════════════════════════
+ * v3.0.0 组织熵增引擎（大企业病 / 小企业乱）
+ *
+ * 现实逻辑：
+ *   ① 30 家店无公司化 → 店长/员工飞单、贪污、吃回扣
+ *      利润暗中流失，报表上看不出来（看不见的出血）
+ *   ② 花高薪空降高管 → 水土不服 → 老员工集体离职
+ *   ③ 管理层级越多，消息传得越慢，决策越慢
+ *
+ *   熵增 = 系统自然走向混乱；不投入管理，它自己会变坏
+ * ═══════════════════════════════════════════════════ */
+
+/* 每月隐性流失（不用事件触发，就是静静在漏钱） */
+function entropyDrain(rev, stores) {
+  let rate = 0;
+  // 店多没总部：各店自己拿主意，采购/库存/人员全失控
+  if (!G.hasHQ) {
+    if (stores >= 30) rate += 0.020;
+    else if (stores >= 15) rate += 0.012;
+    else if (stores >= 8) rate += 0.006;
+  }
+  // 有总部没公司化：总部管得住，但没正规财务，跑冒滴漏还在
+  if (G.hasHQ && !G.hasCompany) {
+    if (stores >= 30) rate += 0.012;
+    else if (stores >= 15) rate += 0.005;
+  }
+  // 公司化之后才真正管住
+  if (G.hasCompany) {
+    rate += 0.002;   // 仍有少量官僚成本
+  }
+  // 士气低：员工心不在，手就不干净
+  if (G.morale < 50) rate *= 1.5;
+  if (G.morale < 30) rate *= 2.0;
+  // 家族成员当店长（第二批会接上，先留口子）
+  if (G.hasRelativeManager) rate += 0.01;
+
+  G.entropyLoss = rev * rate;
+  return { loss: G.entropyLoss, rate };
+}
+
+/* 熵增的偶发爆发（金额大、看得见，但仍是“说不清どうして”的那种） */
+function entropyEvent(rev, stores) {
+  const drain = entropyDrain(rev, stores);
+  if (drain.rate <= 0) return null;
+  // 每月爆发概率：流失率越高越容易
+  if (Math.random() > drain.rate * 8) return null;
+  const pool = [];
+  if (!G.hasCompany) {
+    pool.push({ text: '🕳 查出店长飞单：自己接私活，营收走个人账户，损失 ', mult: 0.06, morale: -4 });
+    pool.push({ text: '💸 采购吃回扣：食材采购价高出市价，损失 ', mult: 0.05, morale: -2 });
+  }
+  if (!G.hasHQ) {
+    pool.push({ text: '📋 账目对不上：几个店各记各的账，盘点差出一大截，损失 ', mult: 0.07, morale: -5 });
+  }
+  if (!pool.length) return null;
+  const hit = pool[Math.floor(Math.random() * pool.length)];
+  const amt = rev * hit.mult;
+  G.cash -= amt;
+  if (hit.morale) G.morale = Math.max(0, G.morale + hit.morale);
+  return { text: hit.text + (amt / 1e4).toFixed(1) + ' 万（这种事不会上报表）', amount: amt };
+}
+
+/* 空降高管：花钱请人，也可能把老人气走 */
+function hireOutsideExec() {
+  if (G.hasOutsideExec) return { ok: false, msg: '已经请过外部高管了' };
+  const cost = 1200000;   // 一次性 120 万（签约+安家+猎头费）
+  if (G.cash < cost) return { ok: false, msg: '现金不够，需要 120 万（现有 ' + (G.cash / 1e4).toFixed(0) + ' 万）' };
+  G.cash -= cost;
+  G.hasOutsideExec = true;
+  G.execMonthly = 80000;   // 每月 8 万年薪摊月
+
+  // 水土不服：老员工集体离职是真实常态
+  const backlash = Math.random() < 0.45;
+  if (backlash) {
+    const leave = Math.max(1, Math.round(G.staff * 0.12));
+    G.staff = Math.max(1, G.staff - leave);
+    G.morale = Math.max(0, G.morale - 18);
+    return { ok: true, backlash: true,
+      msg: '🧑‍💼 空降高管到岗，但水土不服：老员工集体出走 ' + leave +
+           ' 人，士气 -18。他还在摸索你的生意' };
+  }
+  // 成功：熵增流失砍半
+  return { ok: true, backlash: false,
+    msg: '🧑‍💼 空降高管顺利融入，管理漏洞开始堵上，隐性流失减半' };
+}
+
+/* 熵增修正系数（给 engine 用） */
+function entropyCoef() {
+  let c = 1.0;
+  if (G.hasOutsideExec) c *= 0.5;
+  return c;
+}
+
 /* 检查能不能建 */
 function checkOrg(levelId) {
   const lv = ORG_LEVELS.find(o => o.id === levelId);

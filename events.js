@@ -69,8 +69,8 @@ const EVENTS = [
     cond: () => true,
     title: '差评上热搜',
     text: '有顾客发帖说在菜里吃出异物，转发过万。',
-    effect: g => ({ revenueDelta: -0.3, months: 2, reputation: -20,
-                    text: '连续 2 个月营收 -30%，口碑 -20' })
+    effect: g => ({ revenueDelta: -0.25, months: 2, reputation: -12,
+                    text: '连续 2 个月营收 -25%，口碑 -12（真实：热搜会退，但老客会记得一阵）' })
   },
   {
     id: 'key_staff_quit',
@@ -106,8 +106,8 @@ const EVENTS = [
     cond: () => true,
     title: '隔壁开了同行',
     text: '同品类连锁品牌在附近开店，打价格战。',
-    effect: g => ({ revenueDelta: -0.2, months: 3,
-                    text: '连续 3 个月营收 -20%' })
+    effect: g => ({ revenueDelta: -0.15, months: 3,
+                    text: '连续 3 个月营收 -15%' })
   },
   {
     id: 'tax_check',

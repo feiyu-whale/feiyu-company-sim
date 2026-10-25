@@ -12,7 +12,7 @@ const SEGMENTS = {
     foodCostRate: 0.42,       // 食材 42%
     staffRate: 0.30,          // 人工 30%
     staffFixedWage: 6000,     // 人均月工资（固定成本，不随营收变）
-    rentFixed: 150000,        // 固定房租：200㎡ 商圈月租 12 万
+    rentFixed: 95000,         // 固定房租：200㎡ 核心商圈月租 9.5 万（成都实测口径）
     utilFixed: 24000,         // 固定水电 2.4 万
     miscRate: 0.03,           // 杂费 3%
     otherOpexRate: 0.05,     // 其他运营成本：耗材/营销/外卖抽成/支付手续费/维修
@@ -22,7 +22,7 @@ const SEGMENTS = {
     apDays: 45,               // 应付账期
     invDays: 10,              // 存货天数
     dineInRatio: 0.70,     // 堂食占比（其余走外卖/团购，有账期）
-    volatility: 0.35,         // 营收波动率（正餐最不稳）
+    volatility: 0.18,         // 营收波动率（真实月波动 15~20%）
     staffCount: 20,           // 单店标准配置（人均月产值约 3.0 万）
     realData: '数据来源：3 家 A 股餐饮上市公司年报（毛利率 17.0~19.3%，人工占比 27.0~44.3%）',
     difficulty: '★★★☆☆'
@@ -34,7 +34,7 @@ const SEGMENTS = {
     foodCostRate: 0.40,
     staffRate: 0.33,
     staffFixedWage: 6000,       // 人均月工资（固定成本，不随营收变）
-    rentFixed: 96000,         // 固定房租 9.6 万
+    rentFixed: 78000,         // 固定房租 7.8 万（火锅店面积大但租金单价低）
     utilFixed: 40000,         // 火锅耗能高，固定水电 4 万
     miscRate: 0.04,
     otherOpexRate: 0.04,     // 其他运营成本：耗材/营销/外卖抽成/支付手续费/维修
@@ -44,7 +44,7 @@ const SEGMENTS = {
     apDays: 40,
     invDays: 8,
     dineInRatio: 0.85,     // 堂食占比（其余走外卖/团购，有账期）
-    volatility: 0.38,
+    volatility: 0.20,         // 营收波动率（火锅季节性强）
     staffCount: 40,           // 单店标准配置（人均月产值约 3.2 万）
     realData: '数据来源：3 家港股火锅上市公司年报（毛利率 59.5~65.0%，人工占比 29.5~34.8%）',
     difficulty: '★★☆☆☆'
@@ -66,7 +66,7 @@ const SEGMENTS = {
     apDays: 35,
     invDays: 5,
     dineInRatio: 0.45,     // 堂食占比（其余走外卖/团购，有账期）
-    volatility: 0.20,
+    volatility: 0.14,         // 营收波动率（快餐最稳）
     staffCount: 14,           // 单店标准配置（人均月产值约 3.3 万）
     realData: '数据来源：1 家港股快餐上市公司年报（集团毛利率 21.7%，净利率 8.5%）',
     difficulty: '★★☆☆☆'
@@ -88,7 +88,7 @@ const SEGMENTS = {
     apDays: 40,
     invDays: 15,
     dineInRatio: 0.35,     // 堂食占比（其余走外卖/团购，有账期）
-    volatility: 0.25,
+    volatility: 0.16,         // 营收波动率（茶饮夏季旺、冬季淡）
     staffCount: 2,            // 单店标准配置（人均月产值约 2.7 万）
     realData: '数据来源：3 家港股茶饮上市公司年报（毛利率 31.1~33.0%，净利率 15.2~24.1%）',
     difficulty: '★☆☆☆☆'

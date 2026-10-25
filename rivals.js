@@ -67,10 +67,16 @@ function rivalsMonthly() {
     if (r.monthsActive % 6 === 0) r.strength *= 1.06;
 
     // 打价格战：竞争激烈时，大对手会降价抢客
+    // v3.0.0：不再自动压制玩家，改成抛出博弈 —— 玩家自己选跟不跟
     if (!r.priceWar && G.compIntensity > 1.2 && Math.random() < 0.08) {
       r.priceWar = true;
       G.rivalsPriceWarMonths = 3;
-      events.push('⚔️ 「' + r.name + '」开始打价格战，全场七折，客流被抢走一部分');
+      if (typeof triggerPriceWar === 'function' && !G.priceWar) {
+        triggerPriceWar(r);
+        events.push('⚔️ 「' + r.name + '」开始打价格战，全场七折。跟不跟，你定');
+      } else {
+        events.push('⚔️ 「' + r.name + '」开始打价格战，全场七折，客流被抢走一部分');
+      }
     }
   });
 
@@ -89,6 +95,132 @@ function competitionPressure() {
   // 每 1.0 强度压 12% 客流，最多压 35%
   return Math.max(0.65, 1 - total * 0.12);
 }
+
+/* ═══════════════════════════════════════════════════
+ * v3.0.0 价格战博弈树（不是数值碾压，是逼玩家做选择）
+ *
+ * 现实逻辑：
+ *   对手实力远大于你时打价格战，你只有两条路：
+ *     ① 跟进降价 → 毛利率跌破盈亏线，失血而死
+ *     ② 不降价   → 客流被吸干，慢性死亡
+ *   破局点：品牌力（口碑）够强 → 可以不参与，靠品牌溢价活下来
+ *
+ *   这就是现实：中小玩家跟不起，大品牌赔得起
+ * ═══════════════════════════════════════════════════ */
+
+/* 品牌力：口碑 + 门店规模 + 上市背书 */
+function brandPower() {
+  let bp = G.reputation / 100;                 // 0~1
+  bp += Math.min(0.25, G.stores * 0.008);      // 店多 = 认知度高
+  if (G.listed) bp += 0.15;                    // 上市 = 信任背书
+  if (G.franchise) bp *= 0.85;                 // 加盟 = 品牌不是你的
+  return Math.min(1.5, bp);
+}
+
+/* 触发价格战：由 rivalsMonthly 调用，但不再自动压制，而是交给玩家选 */
+function triggerPriceWar(rival) {
+  const myBP = brandPower();
+  // 品牌力够强，对手也不敢轻易打（或者打了也伤不到你）
+  const warIntensity = rival.strength * (1.2 - myBP * 0.5);
+  G.priceWar = {
+    rival: rival.name,
+    strength: rival.strength,
+    intensity: Math.max(0.3, warIntensity),
+    startMonth: G.month,
+    // 品牌力够硬 → 自带抵抗，不降价也掉得少
+    brandResist: Math.min(0.75, myBP * 0.6)
+  };
+  return G.priceWar;
+}
+
+/* 算出三个选项的后果，让玩家看清楚了再选 */
+function priceWarOptions() {
+  const pw = G.priceWar;
+  if (!pw) return null;
+  const p = P();
+  // 当前毛利率（粗算）
+  const grossMargin = 1 - p.foodCostRate - p.otherOpexRate - p.miscRate;
+
+  // 选项 A：跟进降价
+  const followDiscount = 0.25;               // 跟降 25%
+  const followMargin = grossMargin - followDiscount;
+  const followRevenueKeep = 0.95;            // 保住大部分客流
+
+  // 选项 B：死撑不降
+  const holdRevenueLoss = Math.min(0.6, pw.intensity * 0.35) * (1 - pw.brandResist);
+  const holdRevenueKeep = 1 - holdRevenueLoss;
+
+  // 选项 C：品牌战（只对品牌力够强的开放）
+  const canBrandWar = brandPower() >= 0.55;
+  const brandWarCost = 0.08;                 // 加大营销投放
+  const brandWarRevenueKeep = 0.92;
+
+  return {
+    rival: pw.rival,
+    month: G.month,
+    brandPower: brandPower(),
+    options: [
+      {
+        id: 'follow', name: '跟进降价',
+        desc: '跟着打七五折，抢回客流',
+        revenueKeep: followRevenueKeep,
+        marginAfter: followMargin,
+        risk: followMargin < 0 ? '毛利率跌破 0，每卖一单亏一单' : '毛利率被压薄'
+      },
+      {
+        id: 'hold', name: '死撑不降',
+        desc: '维持原价，靠老客户和位置撑着',
+        revenueKeep: holdRevenueKeep,
+        marginAfter: grossMargin,
+        risk: '客流流失 ' + (holdRevenueLoss * 100).toFixed(0) + '%' +
+              (pw.brandResist > 0.1 ? '（品牌力帮你挡掉了部分流失）' : '')
+      },
+      {
+        id: 'brand', name: '品牌战（加大投放）',
+        desc: canBrandWar ? '不降价，砸钱做口碑和营销' : '品牌力不够，玩不起这局',
+        revenueKeep: brandWarRevenueKeep,
+        marginAfter: grossMargin - brandWarCost,
+        available: canBrandWar,
+        risk: canBrandWar ? '每月多花营收 8%，换品牌溢价' : '品牌力 ' + (brandPower() * 100).toFixed(0) + '，需 55 以上'
+      }
+    ]
+  };
+}
+
+/* 玩家做出选择 */
+function resolvePriceWar(choiceId) {
+  const pw = G.priceWar;
+  if (!pw) return { ok: false, msg: '当前没有价格战' };
+  const opts = priceWarOptions();
+  const opt = opts.options.find(o => o.id === choiceId);
+  if (!opt) return { ok: false, msg: '没有这个选项' };
+  if (opt.available === false) return { ok: false, msg: opt.risk };
+
+  // 影响持续 3 个月
+  const months = 3;
+  // 营收乘数：相对无价格战时
+  addMod('revenueDelta', opt.revenueKeep - 1, months);
+
+  if (choiceId === 'follow') {
+    // 降价 25% → 毛利率直接砍掉四分之一营收
+    addMod('priceWarDiscount', 0.25, months);
+  } else if (choiceId === 'brand') {
+    addMod('otherOpexDelta', 0.08, months);
+    G.reputation = Math.min(100, G.reputation + 4);   // 投放换口碑
+  }
+
+  G.priceWar = null;
+  G.priceWarHistory = G.priceWarHistory || [];
+  G.priceWarHistory.push({ month: G.month, rival: pw.rival, choice: choiceId });
+
+  const msgMap = {
+    follow: '⚔️ 跟进降价：保住客流，但未来 3 个月毛利率被砍 25%',
+    hold: '🛡 死撑原价：客流会流失，但每单还有利润',
+    brand: '💎 品牌战：不降价，砸钱做口碑，未来 3 个月多花 8% 营收'
+  };
+  return { ok: true, msg: msgMap[choiceId], months };
+}
+
 
 /* 挖人：对手会挖你的骨干 */
 function rivalsPoach() {

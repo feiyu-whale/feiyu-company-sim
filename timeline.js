@@ -114,7 +114,93 @@ function historyRevenueMult(playerMonth, startYear) {
   return { mult, events: evs, worst };
 }
 
-/* 未来 1~3 个月内要来的事件（做预警用） */
+/* ═══════════════════════════════════════════════════
+ * v3.0.0 宏观/时代周期引力场
+ *
+ * 现实逻辑：
+ *   不是“历史事件弹个新闻”，而是所有公式背后有一双看不见的手
+ *   消费意愿高 → 客人都愿意花钱；低 → 你降价也没人来
+ *   资金成本低 → 借钱便宜敢扩张；高 → 借一笔死一笔
+ *
+ *   玩家最终体会：“时代面前，个人努力微不足道”
+ * ═══════════════════════════════════════════════════ */
+
+/* 消费意愿系数（隐藏全局变量）
+ * 真实参照：2023 消费降级、疫情报复性反弹、2024 后的低欲望
+ */
+const CONSUMER_CYCLE = {
+  '2019-01': 1.10, '2019-06': 1.08, '2019-12': 1.05,
+  '2020-01': 0.15, '2020-03': 0.30, '2020-06': 0.60, '2020-10': 0.90, '2020-12': 0.98,
+  '2021-01': 1.00, '2021-06': 0.95, '2021-12': 0.88,
+  '2022-01': 0.78, '2022-06': 0.65, '2022-12': 0.62,
+  '2023-01': 1.05, '2023-02': 1.18, '2023-06': 1.12, '2023-12': 1.00,
+  '2024-01': 0.93, '2024-06': 0.88, '2024-12': 0.85,
+  '2025-01': 0.83, '2025-06': 0.81, '2025-12': 0.79,
+  '2026-01': 0.78
+};
+
+/* 资金成本（基准利率，年化）——真实 LPR 口径 */
+const RATE_CYCLE = {
+  '2019-01': 4.31, '2019-06': 4.31, '2019-12': 4.15,
+  '2020-01': 4.05, '2020-06': 3.85, '2020-12': 3.85,
+  '2021-01': 3.85, '2021-06': 3.85, '2021-12': 3.80,
+  '2022-01': 3.70, '2022-06': 3.70, '2022-12': 3.65,
+  '2023-01': 3.65, '2023-06': 3.55, '2023-12': 3.45,
+  '2024-01': 3.45, '2024-06': 3.45, '2024-12': 3.10,
+  '2025-01': 3.10, '2025-06': 3.00, '2025-12': 2.90,
+  '2026-01': 2.90
+};
+
+/* 插值：找到最接近的两个锚点线值插值 */
+function interpCycle(table, ym) {
+  const keys = Object.keys(table).sort();
+  if (!keys.length) return 1.0;
+  if (ym <= keys[0]) return table[keys[0]];
+  if (ym >= keys[keys.length - 1]) return table[keys[keys.length - 1]];
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (ym >= keys[i] && ym <= keys[i + 1]) {
+      const [y1, m1] = keys[i].split('-').map(Number);
+      const [y2, m2] = keys[i + 1].split('-').map(Number);
+      const t1 = y1 * 12 + m1, t2 = y2 * 12 + m2, tt = Number(ym.split('-')[0]) * 12 + Number(ym.split('-')[1]);
+      const w = t2 === t1 ? 0 : (tt - t1) / (t2 - t1);
+      return table[keys[i]] * (1 - w) + table[keys[i + 1]] * w;
+    }
+  }
+  return table[keys[keys.length - 1]];
+}
+
+/* 当前月份的宏观状态（给 engine 月度调用） */
+function macroState(playerMonth, startYear) {
+  // 转换成“YYYY-MM”
+  const monthAbs = playerMonthToAbs(playerMonth, startYear);
+  const y = Math.floor((monthAbs - 1) / 12);
+  const m = ((monthAbs - 1) % 12) + 1;
+  const ym = String(startYear + y) + '-' + String(m).padStart(2, '0');
+
+  const consumer = interpCycle(CONSUMER_CYCLE, ym);
+  const rate = interpCycle(RATE_CYCLE, ym);
+  G.macroConsumer = consumer;
+  G.macroRate = rate / 100;
+  G.lastRBI = rate;   // 基准利率接回旧字段
+
+  // 宏观阶段描述（给玩家一个模糊的感受，不给数字）
+  let mood;
+  if (consumer >= 1.05) mood = '挣钱容易，客人愿意花钱';
+  else if (consumer >= 0.9) mood = '还行，生意正常做';
+  else if (consumer >= 0.75) mood = '大家钱袋子紧了，客人开始算计';
+  else if (consumer >= 0.5) mood = '消费在降级，客流明显变少';
+  else mood = '百业阑珊，街上没什么人';
+
+  return { consumer, rate, mood, ym };
+}
+
+/* 资金成本对借贷的影响系数（利率高时借不起） */
+function ratePressure() {
+  const r = G.macroRate || 0.035;
+  // 3% 为中性，每高 1% 增加 10% 利息负担
+  return 1 + (r - 0.03) * 10;
+}
+
 function upcomingEvents(playerMonth, startYear) {
   const monthAbs = playerMonthToAbs(playerMonth, startYear);
   const out = [];
